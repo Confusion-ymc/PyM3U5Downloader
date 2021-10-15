@@ -1,0 +1,5 @@
+/venv
+.idea
+__pycache__
+m3u8_output
+m3u8_temp
