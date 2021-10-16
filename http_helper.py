@@ -28,7 +28,9 @@ class HttpTaskManager(QThread):
                     async with session.get(url, ssl=False) as response:
                         content = await response.content.read()
                         return content
-            except asyncio.TimeoutError:
+            except Exception as e:
+                print(e)
+                await asyncio.sleep(1)
                 continue
 
     async def set_sem(self, thread_count):
