@@ -13,11 +13,13 @@ except ImportError:
 
 from Crypto.Util.Padding import pad
 import m3u8
+from urllib.parse import urlparse
 
 
 class M3u8File:
     def __init__(self, url, temp_dir):
         self.url = url
+        self.base_url = self.get_base_uri()
         self.file_content = None
         self.method = None
         self.key_map = {}
@@ -29,6 +31,16 @@ class M3u8File:
         self.url_to_key = {}
         self.domain = '/'.join(url.split("/")[:3]) + '/'
         self.playlist: M3U8 = Optional[None]
+
+    def get_base_uri(self):
+        parsed_url = urlparse(self.url)
+        self.base_url = parsed_url.scheme + '://' + parsed_url[1]
+        return self.base_url
+
+    def check_url(self, item):
+        if not item.uri.startswith('http'):
+            item.base_uri = item.uri = self.base_url + item.uri
+        # return item
 
     def decrypt_content(self, segment):
         if segment.key:
@@ -46,22 +58,22 @@ class M3u8File:
         #     return content
 
     async def analysis(self):
-        from urllib.parse import urlparse
         while True:
             # 下载m3u8文件
             res = await self.http_manager.async_request(self.url)
             print('M3U8下载成功')
             print('开始解析')
             self.playlist = m3u8.loads(res.decode())
-            if len(self.playlist.playlists) and self.playlist.playlists[0].uri.endswith('.m3u8'):
-                parsed_url = urlparse(self.url)
-                self.url = parsed_url.scheme + '://' + parsed_url[1] + self.playlist.playlists[0].uri
+            if len(self.playlist.playlists) and '.m3u8' in self.playlist.playlists[0].uri:
+                self.url = self.base_url + self.playlist.playlists[0].uri
+                self.get_base_uri()
             else:
                 break
         self.save_index_file()
         for key in self.playlist.keys:
             if not key or key.method == 'NONE':
                 continue
+            self.check_url(key)
             key_content = await self.http_manager.async_request(key.absolute_uri)
             self.key_map[key.absolute_uri] = AES.new(
                 key_content, self.mode_map[self.playlist.keys[0].method],

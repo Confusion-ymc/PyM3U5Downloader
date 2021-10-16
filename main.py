@@ -103,6 +103,7 @@ class Runner(QThread):
         await self.http_manager.set_sem(self.thread_count)
         tasks = []
         for segment in self.m3u8_file.playlist.segments:
+            self.m3u8_file.check_url(segment)
             file_name = segment.absolute_uri.split('/')[-1]
             if (Path().cwd() / self.temp_dir / file_name).is_file():
                 self.progress_signal.emit()
